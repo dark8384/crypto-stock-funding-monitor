@@ -14,6 +14,16 @@ live_funding_rates = {
     "SPY500": {"spot": 4500, "futures": 4515}
 }
 
+# 🟢 HTTP GET Endpoint for Root / (Ab "Not Found" nahi aayega)
+@app.get("/")
+async def root():
+    return {"message": "Crypto & Stock Funding Monitor Backend is running!"}
+
+# 🟢 HTTP GET Endpoint for checking current live rates instantly via browser
+@app.get("/api/funding")
+async def get_funding_rates():
+    return live_funding_rates
+
 async def fetch_delta_india():
     while True:
         try:
