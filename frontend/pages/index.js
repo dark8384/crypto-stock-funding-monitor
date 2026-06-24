@@ -1,45 +1,152 @@
-import { useEffect, useState } from 'react';
-import io from 'socket.io-client';
+"use client"; // Next.js mein real-time websockets chalane ke liye zaroori hai
+
+import { useEffect, useState } from "react";
+import { io } from "socket.io-client";
 
 export default function Dashboard() {
-  const [data, setData] = useState(null);
+  const [rates, setRates] = useState(null);
+  const [status, setStatus] = useState("Connecting to Live Backend...");
 
   useEffect(() => {
-    const socket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000');
-    socket.on('funding_update', (newData) => {
-      setData(newData);
+    // 🟢 Tumhara Render ka live backend URL yahan daal diya hai
+    const socket = io("https://funding-bot-backend-mgci.onrender.com", {
+      transports: ["websocket"],
     });
-    return () => socket.disconnect();
+
+    socket.on("connect", () => {
+      setStatus("Connected! Fetching Live Rates...");
+    });
+
+    // 🟢 Backend se 'funding_update' event ka live data sunna
+    socket.on("funding_update", (data) => {
+      console.log("Real-time data received:", data);
+      setRates(data);
+    });
+
+    socket.on("disconnect", () => {
+      setStatus("Disconnected from backend. Retrying...");
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
-  return (
-    <div style={{ background: '#111827', color: '#fff', minHeight: '100vh', padding: '24px', fontFamily: 'sans-serif' }}>
-      <header style={{ borderBottom: '1px solid #1f2937', paddingBottom: '16px', marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>🌐 Multi-Exchange Funding & Spread Monitor</h1>
-        <p style={{ color: '#9ca3af', fontSize: '14px', marginTop: '4px' }}>Live: Binance, Bybit, BingX, Gate, Delta India, TradFi Indexes</p>
-      </header>
+  // Jab tak data nahi aata, tab tak loading status dikhayega
+  if (!rates) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-950 text-white">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-400 mx-auto mb-4"></div>
+          <p className="text-gray-400 font-mono text-sm">{status}</p>
+        </div>
+      </div>
+    );
+  }
 
-      <div style={{ background: '#1f2937', borderRadius: '8px', padding: '16px', overflowX: 'auto' }}>
-        <table style={{ width: '100%', textAlignment: 'left', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid #374151', color: '#9ca3af' }}>
-              <th style={{ padding: '12px' }}>Asset</th>
-              <th style={{ padding: '12px' }}>Binance</th>
-              <th style={{ padding: '12px' }}>Bybit</th>
-              <th style={{ padding: '12px' }}>Delta India (Net)</th>
-              <th style={{ padding: '12px' }}>Max Spread Yield</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style={{ borderBottom: '1px solid #374151' }}>
-              <td style={{ padding: '12px', fontWeight: 'bold', color: '#f59e0b' }}>BTC</td>
-              <td style={{ padding: '12px', color: '#34d399' }}>+0.0100%</td>
-              <td style={{ padding: '12px', color: '#34d399' }}>+0.0120%</td>
-              <td style={{ padding: '12px', color: '#f87171' }}>+0.0520%</td>
-              <td style={{ padding: '12px', color: '#fbbf24', fontWeight: 'bold' }}>⚡ 43.8% APY</td>
-            </tr>
-          </tbody>
-        </table>
+  return (
+    <div className="p-6 bg-gray-950 text-white min-h-screen font-sans">
+      {/* Header */}
+      <div className="flex justify-between items-center border-b border-gray-800 pb-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+            Multi-Exchange Funding Monitor
+          </h1>
+          <p className="text-xs text-gray-400 mt-1">Real-time spreads & rates</p>
+        </div>
+        <div className="flex items-center gap-2 bg-green-500/10 text-green-400 px-3 py-1 rounded-full text-xs font-mono">
+          <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse"></span>
+          LIVE
+        </div>
+      </div>
+
+      {/* Grid Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        {/* BTC Card */}
+        <div className="bg-gray-900 border border-gray-800 p-5 rounded-xl shadow-lg">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-yellow-400">⚡ BTC Rates</h2>
+            <span className="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded">Crypto</span>
+          </div>
+          <div className="space-y-2 font-mono text-sm">
+            <div className="flex justify-between border-b border-gray-800/50 py-1">
+              <span className="text-gray-400">Binance:</span>
+              <span className="text-green-400">{rates.BTC?.binance}%</span>
+            </div>
+            <div className="flex justify-between border-b border-gray-800/50 py-1">
+              <span className="text-gray-400">Bybit:</span>
+              <span className="text-green-400">{rates.BTC?.bybit}%</span>
+            </div>
+            <div className="flex justify-between border-b border-gray-800/50 py-1">
+              <span className="text-gray-400">Delta India:</span>
+              <span className="text-yellow-400 font-bold">{rates.BTC?.delta_india}%</span>
+            </div>
+            <div className="flex justify-between border-b border-gray-800/50 py-1">
+              <span className="text-gray-400">Gate.io:</span>
+              <span className="text-green-400">{rates.BTC?.gate}%</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span className="text-gray-400">BingX:</span>
+              <span className="text-green-400">{rates.BTC?.bingx}%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ETH Card */}
+        <div className="bg-gray-900 border border-gray-800 p-5 rounded-xl shadow-lg">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-blue-400">🔷 ETH Rates</h2>
+            <span className="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded">Crypto</span>
+          </div>
+          <div className="space-y-2 font-mono text-sm">
+            <div className="flex justify-between border-b border-gray-800/50 py-1">
+              <span className="text-gray-400">Binance:</span>
+              <span className="text-green-400">{rates.ETH?.binance}%</span>
+            </div>
+            <div className="flex justify-between border-b border-gray-800/50 py-1">
+              <span className="text-gray-400">Bybit:</span>
+              <span className="text-green-400">{rates.ETH?.bybit}%</span>
+            </div>
+            <div className="flex justify-between border-b border-gray-800/50 py-1">
+              <span className="text-gray-400">Delta India:</span>
+              <span className="text-yellow-400 font-bold">{rates.ETH?.delta_india}%</span>
+            </div>
+            <div className="flex justify-between border-b border-gray-800/50 py-1">
+              <span className="text-gray-400">Gate.io:</span>
+              <span className="text-green-400">{rates.ETH?.gate}%</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span className="text-gray-400">BingX:</span>
+              <span className="text-green-400">{rates.ETH?.bingx}%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* TradFi Indexes Card */}
+        <div className="bg-gray-900 border border-gray-800 p-5 rounded-xl shadow-lg col-span-1 md:col-span-2 lg:col-span-1">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-purple-400">📈 SPY 500 Spread</h2>
+            <span className="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded">Stocks</span>
+          </div>
+          <div className="space-y-3 font-mono text-sm">
+            <div className="flex justify-between border-b border-gray-800/50 py-1">
+              <span className="text-gray-400">Spot Price:</span>
+              <span className="text-white">${rates.SPY500?.spot}</span>
+            </div>
+            <div className="flex justify-between border-b border-gray-800/50 py-1">
+              <span className="text-gray-400">Futures Price:</span>
+              <span className="text-white">${rates.SPY500?.futures}</span>
+            </div>
+            <div className="flex justify-between bg-purple-500/10 p-2 rounded mt-2">
+              <span className="text-purple-300 font-semibold">Spread:</span>
+              <span className="text-purple-400 font-bold">
+                +${(rates.SPY500?.futures - rates.SPY500?.spot).toFixed(2)}
+              </span>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );
