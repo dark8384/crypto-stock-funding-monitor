@@ -1,152 +1,126 @@
-"use client"; // Next.js mein real-time websockets chalane ke liye zaroori hai
-
 import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 
-export default function Dashboard() {
+export default function ArbitrageMatrix() {
   const [rates, setRates] = useState(null);
-  const [status, setStatus] = useState("Connecting to Live Backend...");
+  const [status, setStatus] = useState("Connecting to Stream...");
 
   useEffect(() => {
-    // 🟢 Tumhara Render ka live backend URL yahan daal diya hai
     const socket = io("https://funding-bot-backend-mgci.onrender.com", {
       transports: ["websocket"],
     });
 
     socket.on("connect", () => {
-      setStatus("Connected! Fetching Live Rates...");
+      setStatus(`Direct Local Stream Update: ${new Date().toISOString().replace('T', ' ').substring(0, 19)} UTC`);
     });
 
-    // 🟢 Backend se 'funding_update' event ka live data sunna
     socket.on("funding_update", (data) => {
-      console.log("Real-time data received:", data);
       setRates(data);
     });
 
-    socket.on("disconnect", () => {
-      setStatus("Disconnected from backend. Retrying...");
-    });
-
-    return () => {
-      socket.disconnect();
-    };
+    return () => socket.disconnect();
   }, []);
 
-  // Jab tak data nahi aata, tab tak loading status dikhayega
   if (!rates) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-950 text-white">
+      <div className="flex items-center justify-center min-h-screen bg-[#111] text-white font-mono text-xs">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-400 mx-auto mb-4"></div>
-          <p className="text-gray-400 font-mono text-sm">{status}</p>
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500 mx-auto mb-3"></div>
+          <p>INITIALIZING MULTI-EXCHANGE DATA STREAM...</p>
         </div>
       </div>
     );
   }
 
+  const assetKeys = Object.keys(rates);
+
   return (
-    <div className="p-6 bg-gray-950 text-white min-h-screen font-sans">
+    <div className="bg-[#111215] text-[#d1d4dc] min-h-screen p-4 font-mono text-xs selection:bg-emerald-500/30">
       {/* Header */}
-      <div className="flex justify-between items-center border-b border-gray-800 pb-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
-            Multi-Exchange Funding Monitor
-          </h1>
-          <p className="text-xs text-gray-400 mt-1">Real-time spreads & rates</p>
-        </div>
-        <div className="flex items-center gap-2 bg-green-500/10 text-green-400 px-3 py-1 rounded-full text-xs font-mono">
-          <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse"></span>
-          LIVE
-        </div>
+      <div className="text-center mb-6">
+        <h1 className="text-lg md:text-xl font-bold text-white tracking-wider flex items-center justify-center gap-2 uppercase">
+          🚀 MULTI-EXCHANGE FUNDING & SPREAD MONITOR MATRIX 🚀
+        </h1>
+        <p className="text-[10px] text-red-500 mt-1 flex items-center justify-center gap-1.5 font-bold">
+          <span className="h-2 w-2 rounded-full bg-red-500 animate-ping"></span>
+          {status}
+        </p>
       </div>
 
-      {/* Grid Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        
-        {/* BTC Card */}
-        <div className="bg-gray-900 border border-gray-800 p-5 rounded-xl shadow-lg">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-yellow-400">⚡ BTC Rates</h2>
-            <span className="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded">Crypto</span>
-          </div>
-          <div className="space-y-2 font-mono text-sm">
-            <div className="flex justify-between border-b border-gray-800/50 py-1">
-              <span className="text-gray-400">Binance:</span>
-              <span className="text-green-400">{rates.BTC?.binance}%</span>
-            </div>
-            <div className="flex justify-between border-b border-gray-800/50 py-1">
-              <span className="text-gray-400">Bybit:</span>
-              <span className="text-green-400">{rates.BTC?.bybit}%</span>
-            </div>
-            <div className="flex justify-between border-b border-gray-800/50 py-1">
-              <span className="text-gray-400">Delta India:</span>
-              <span className="text-yellow-400 font-bold">{rates.BTC?.delta_india}%</span>
-            </div>
-            <div className="flex justify-between border-b border-gray-800/50 py-1">
-              <span className="text-gray-400">Gate.io:</span>
-              <span className="text-green-400">{rates.BTC?.gate}%</span>
-            </div>
-            <div className="flex justify-between py-1">
-              <span className="text-gray-400">BingX:</span>
-              <span className="text-green-400">{rates.BTC?.bingx}%</span>
-            </div>
-          </div>
-        </div>
+      {/* Dynamic Grid Table */}
+      <div className="overflow-x-auto border border-gray-800 rounded bg-[#141519] shadow-2xl">
+        <table className="w-full text-left border-collapse min-w-[1200px]">
+          <thead>
+            <tr className="border-b border-gray-800 text-[11px] font-bold text-emerald-500 bg-[#17191e]">
+              <th className="p-3 uppercase">Asset</th>
+              <th className="p-3 text-gray-400">Binance / Spot</th>
+              <th className="p-3 text-gray-400">Bybit / Futures</th>
+              <th className="p-3 text-gray-400">Delta India</th>
+              <th className="p-3 text-gray-400">Gate.io</th>
+              <th className="p-3 text-gray-400">BingX</th>
+              <th className="p-3 text-white">Gross Gap</th>
+              <th className="p-3 text-red-400">Spread</th>
+              <th className="p-3 text-emerald-400">Est Net Profit</th>
+              <th className="p-3 text-gray-400">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-800/50">
+            {assetKeys.map((key) => {
+              const item = rates[key];
+              const isTradFi = item.spot !== undefined || item.futures !== undefined;
+              
+              const valA = isTradFi ? (item.spot || 0) : (item.binance || 0);
+              const valB = isTradFi ? (item.futures || 0) : (item.bybit || 0);
+              const delta = item.delta_india || 0;
+              const gate = item.gate || 0;
+              const bingx = item.bingx || 0;
 
-        {/* ETH Card */}
-        <div className="bg-gray-900 border border-gray-800 p-5 rounded-xl shadow-lg">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-blue-400">🔷 ETH Rates</h2>
-            <span className="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded">Crypto</span>
-          </div>
-          <div className="space-y-2 font-mono text-sm">
-            <div className="flex justify-between border-b border-gray-800/50 py-1">
-              <span className="text-gray-400">Binance:</span>
-              <span className="text-green-400">{rates.ETH?.binance}%</span>
-            </div>
-            <div className="flex justify-between border-b border-gray-800/50 py-1">
-              <span className="text-gray-400">Bybit:</span>
-              <span className="text-green-400">{rates.ETH?.bybit}%</span>
-            </div>
-            <div className="flex justify-between border-b border-gray-800/50 py-1">
-              <span className="text-gray-400">Delta India:</span>
-              <span className="text-yellow-400 font-bold">{rates.ETH?.delta_india}%</span>
-            </div>
-            <div className="flex justify-between border-b border-gray-800/50 py-1">
-              <span className="text-gray-400">Gate.io:</span>
-              <span className="text-green-400">{rates.ETH?.gate}%</span>
-            </div>
-            <div className="flex justify-between py-1">
-              <span className="text-gray-400">BingX:</span>
-              <span className="text-green-400">{rates.ETH?.bingx}%</span>
-            </div>
-          </div>
-        </div>
+              const gap = Math.abs(valA - valB);
+              const spread = isTradFi ? 2.50 : gap * 0.12;
+              const netProfit = gap - spread;
+              const isHighSpread = !isTradFi && spread > 0.02;
 
-        {/* TradFi Indexes Card */}
-        <div className="bg-gray-900 border border-gray-800 p-5 rounded-xl shadow-lg col-span-1 md:col-span-2 lg:col-span-1">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-purple-400">📈 SPY 500 Spread</h2>
-            <span className="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded">Stocks</span>
-          </div>
-          <div className="space-y-3 font-mono text-sm">
-            <div className="flex justify-between border-b border-gray-800/50 py-1">
-              <span className="text-gray-400">Spot Price:</span>
-              <span className="text-white">${rates.SPY500?.spot}</span>
-            </div>
-            <div className="flex justify-between border-b border-gray-800/50 py-1">
-              <span className="text-gray-400">Futures Price:</span>
-              <span className="text-white">${rates.SPY500?.futures}</span>
-            </div>
-            <div className="flex justify-between bg-purple-500/10 p-2 rounded mt-2">
-              <span className="text-purple-300 font-semibold">Spread:</span>
-              <span className="text-purple-400 font-bold">
-                +${(rates.SPY500?.futures - rates.SPY500?.spot).toFixed(2)}
-              </span>
-            </div>
-          </div>
-        </div>
-
+              return (
+                <tr key={key} className="hover:bg-[#1c1e24]/40 transition-colors">
+                  <td className="p-3 font-bold text-white tracking-wide">{key}</td>
+                  <td className="p-3 text-gray-300">
+                    {isTradFi ? `$${valA.toFixed(2)}` : `${valA >= 0 ? '+' : ''}${valA.toFixed(4)}%`}
+                  </td>
+                  <td className="p-3 text-gray-300">
+                    {isTradFi ? `$${valB.toFixed(2)}` : `${valB >= 0 ? '+' : ''}${valB.toFixed(4)}%`}
+                  </td>
+                  <td className="p-3 text-yellow-500 font-semibold">
+                    {isTradFi ? "N/A" : `${delta >= 0 ? '+' : ''}${delta.toFixed(4)}%`}
+                  </td>
+                  <td className="p-3 text-gray-400">
+                    {isTradFi ? "N/A" : `${gate >= 0 ? '+' : ''}${gate.toFixed(4)}%`}
+                  </td>
+                  <td className="p-3 text-gray-400">
+                    {isTradFi ? "N/A" : `${bingx >= 0 ? '+' : ''}${bingx.toFixed(4)}%`}
+                  </td>
+                  <td className="p-3 text-emerald-400 font-bold">
+                    {isTradFi ? `$${gap.toFixed(2)}` : `${gap.toFixed(4)}%`}
+                  </td>
+                  <td className="p-3 text-red-500">
+                    {isTradFi ? `$${spread.toFixed(2)}` : `${spread.toFixed(4)}%`}
+                  </td>
+                  <td className="p-3 text-emerald-400 font-bold">
+                    {isTradFi ? `+$${netProfit.toFixed(2)}` : `+${netProfit.toFixed(4)}%`}
+                  </td>
+                  <td className="p-3 text-[10px]">
+                    {isHighSpread ? (
+                      <span className="text-red-500 font-bold">❌ HIGH SPREAD</span>
+                    ) : (
+                      <span className="text-emerald-400 font-bold flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> SAFE
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );
